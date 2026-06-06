@@ -1,0 +1,72 @@
+# Python
+
+**pycache**/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual Environment
+
+venv/
+env/
+.venv/
+
+# Environment Variables
+
+.env
+
+# VS Code
+
+.vscode/
+
+# PyCharm
+
+.idea/
+
+# Logs
+
+*.log
+
+# Database
+
+*.sqlite3
+
+# OS Files
+
+.DS_Store
+Thumbs.db
+
+# Python cache
+
+.pytest_cache/
+.mypy_cache/
+
+# Build files
+
+build/
+dist/
+*.egg-info/
+
+# Node modules (Frontend)
+
+node_modules/
+
+# React/Vite
+
+frontend/dist/
+
+# Coverage
+
+.coverage
+htmlcov/
+
+# Jupyter
+
+.ipynb_checkpoints/
+
+# Secrets
+
+.env.*
+*.pem
+*.key
