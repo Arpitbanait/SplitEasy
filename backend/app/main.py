@@ -21,13 +21,23 @@ from app.api.payments.routes import router as payment_router
 
 from app.api.dashboard.routes import router as dashboard_router
 
-
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.models import *
 
 Base.metadata.create_all(bind=engine)
 
+
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware, 
+    allow_origins=["*"],  # Adjust this in production
+    allow_methods=["*"],    
+    allow_headers=["*"],
+    allow_credentials=True
+)
 
 app.include_router(auth_router)
 
