@@ -13,23 +13,27 @@ def create_expense(
     db
 ):
 
-    # Check if group exists
-    group = db.query(Group).filter(
-        Group.id == expense_data.group_id
-    ).first()
+    group = None
 
-    if not group:
-        raise HTTPException(
-            status_code=404,
-            detail="Group not found"
-        )
+    # Group validation only if group_id exists
+    if expense_data.group_id:
 
-    # Check if current user belongs to group
-    if current_user not in group.members:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not member of this group"
-        )
+        group = db.query(Group).filter(
+            Group.id == expense_data.group_id
+        ).first()
+
+        if not group:
+            raise HTTPException(
+                status_code=404,
+                detail="Group not found"
+            )
+
+        # Check membership
+        if current_user not in group.members:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not member of this group"
+            )
 
     # Get selected participants
     participants = db.query(User).filter(
@@ -44,18 +48,22 @@ def create_expense(
             detail="No participants selected"
         )
 
-    # Validate all participants belong to group
-    group_member_ids = {
-        member.id
-        for member in group.members
-    }
+    # Validate participants only for group expense
+    if group:
 
-    for participant in participants:
-        if participant.id not in group_member_ids:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{participant.full_name} is not in group"
-            )
+        group_member_ids = {
+            member.id
+            for member in group.members
+        }
+
+        for participant in participants:
+
+            if participant.id not in group_member_ids:
+
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{participant.full_name} is not in group"
+                )
 
     # Create expense
     expense = Expense(
@@ -67,10 +75,9 @@ def create_expense(
 
     db.add(expense)
 
-    # Generate expense ID before commit
+    # Generate ID before commit
     db.flush()
 
-    # Equal split amount
     split_amount = (
         expense_data.amount
         / len(participants)
@@ -93,40 +100,51 @@ def create_expense(
         if participant.id == current_user.id:
             continue
 
-        # Check existing balance
+        # Check balance
         balance = db.query(Balance).filter(
-            Balance.group_id == group.id,
-            Balance.owed_by == participant.id,
-            Balance.owed_to == current_user.id
+            Balance.group_id ==
+            expense_data.group_id,
+
+            Balance.owed_by ==
+            participant.id,
+
+            Balance.owed_to ==
+            current_user.id
         ).first()
 
-        # Update existing balance
         if balance:
+
             balance.amount += split_amount
 
-        # Create new balance
         else:
+
             new_balance = Balance(
-                group_id=group.id,
-                owed_by=participant.id,
-                owed_to=current_user.id,
-                amount=split_amount
+                group_id=
+                expense_data.group_id,
+
+                owed_by=
+                participant.id,
+
+                owed_to=
+                current_user.id,
+
+                amount=
+                split_amount
             )
 
             db.add(new_balance)
 
-
+    # Notifications
     for participant in participants:
 
-     if participant.id != current_user.id:
+        if participant.id != current_user.id:
 
-        create_notification(
-            participant.id,
-            "New Expense Added",
-            f"{current_user.full_name} added ₹{expense.amount} for {expense.description}",
-            db
-        )
-        
+            create_notification(
+                participant.id,
+                "New Expense Added",
+                f"{current_user.full_name} added ₹{expense.amount} for {expense.description}",
+                db
+            )
 
     db.commit()
 
@@ -142,8 +160,6 @@ def create_expense(
         "split_amount":
         split_amount
     }
-
-
 
 
 def get_group_balances(
@@ -546,3 +562,48 @@ def update_expense(
         "message":
         "Expense updated successfully"
     }
+
+
+
+def get_direct_balances(
+    current_user,
+    db
+):
+
+    balances = db.query(
+        Balance
+    ).filter(
+
+        Balance.group_id == None,
+
+        (
+            Balance.owed_by
+            == current_user.id
+        )
+
+        |
+
+        (
+            Balance.owed_to
+            == current_user.id
+        )
+
+    ).all()
+
+    response = []
+
+    for balance in balances:
+
+        response.append({
+
+            "from_user":
+            balance.debtor.full_name,
+
+            "to_user":
+            balance.creditor.full_name,
+
+            "amount":
+            balance.amount
+        })
+
+    return response    

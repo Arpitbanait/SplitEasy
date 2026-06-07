@@ -26,7 +26,8 @@ class Expense(Base):
 
     group_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("groups.id")
+        ForeignKey("groups.id"),
+        nullable=True
     )
 
     paid_by = Column(

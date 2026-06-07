@@ -2,10 +2,11 @@ from datetime import datetime
 
 from pydantic import BaseModel
 from uuid import UUID
+from typing import Optional
 
 
 class CreateExpense(BaseModel):
-    group_id: UUID
+    group_id: Optional[UUID] = None
     amount: float
     description: str
     participants: list[UUID]

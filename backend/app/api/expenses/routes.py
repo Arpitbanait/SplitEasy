@@ -21,6 +21,7 @@ from app.api.expenses.schemas import (
 from app.services.expense_service import (
     create_expense,
     delete_expense,
+    get_direct_balances,
     get_group_balances,
     get_group_expenses,
     settle_up,
@@ -138,6 +139,27 @@ def edit_expense(
     return update_expense(
         expense_id,
         expense,
+        current_user,
+        db
+    )
+
+
+
+@router.get(
+    "/balances/direct"
+)
+def fetch_direct_balances(
+
+    db: Session = Depends(
+        get_db
+    ),
+
+    current_user=Depends(
+        get_current_user
+    )
+):
+
+    return get_direct_balances(
         current_user,
         db
     )
