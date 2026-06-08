@@ -44,7 +44,8 @@ function Dashboard() {
     .reduce((s, b) => s + b.amount, 0);
   const owedToYou = allBalances
     .filter((b) => b.to_user === user?.name)
-    .reduce((s, b) => s + b.amount, 0);
+    .reduce((sum, b) => sum + b.amount, 0);
+
   const net = owedToYou - youOwe;
 
   return (
@@ -236,36 +237,96 @@ function Dashboard() {
   );
 }
 
+/* ---------- Components ---------- */
+
 function StatCard({
-  icon, label, value, tone, loading,
-}: { icon: React.ReactNode; label: string; value: string; tone: "good" | "bad" | "neutral"; loading?: boolean }) {
-  const toneCls = tone === "good" ? "text-success" : tone === "bad" ? "text-danger" : "text-foreground";
+  icon,
+  label,
+  value,
+  tone,
+  loading,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone: "good" | "bad" | "neutral";
+  loading?: boolean;
+}) {
+  const toneClass =
+    tone === "good"
+      ? "text-green-600"
+      : tone === "bad"
+      ? "text-red-500"
+      : "text-foreground";
+
+  const bgClass =
+    tone === "good"
+      ? "bg-green-100 text-green-600"
+      : tone === "bad"
+      ? "bg-red-100 text-red-500"
+      : "bg-muted";
+
   return (
-    <Card>
+    <Card className="shadow-sm hover:shadow-md transition">
       <CardContent className="pt-6">
-        <div className="flex items-center justify-between text-muted-foreground">
-          <span className="text-sm">{label}</span>
-          <span className="h-7 w-7 rounded-md bg-muted grid place-items-center">{icon}</span>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              {label}
+            </p>
+
+            {loading ? (
+              <Skeleton className="mt-3 h-8 w-24" />
+            ) : (
+              <h2
+                className={`mt-3 text-4xl font-bold tracking-tight ${toneClass}`}
+              >
+                {value}
+              </h2>
+            )}
+          </div>
+
+          <div
+            className={`h-12 w-12 rounded-xl grid place-items-center ${bgClass}`}
+          >
+            {icon}
+          </div>
         </div>
-        {loading ? (
-          <Skeleton className="mt-3 h-8 w-32" />
-        ) : (
-          <p className={`mt-2 font-display text-3xl font-bold ${toneCls}`}>{value}</p>
-        )}
       </CardContent>
     </Card>
   );
 }
 
 export function EmptyState({
-  icon, title, desc, action,
-}: { icon: React.ReactNode; title: string; desc: string; action?: React.ReactNode }) {
+  icon,
+  title,
+  desc,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="text-center py-10">
-      <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 text-primary grid place-items-center">{icon}</div>
-      <p className="mt-3 font-semibold">{title}</p>
-      <p className="text-sm text-muted-foreground">{desc}</p>
-      {action && <div className="mt-4">{action}</div>}
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div className="h-14 w-14 rounded-full bg-primary/10 text-primary grid place-items-center">
+        {icon}
+      </div>
+
+      <h3 className="mt-4 text-lg font-semibold">
+        {title}
+      </h3>
+
+      <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+        {desc}
+      </p>
+
+      {action && (
+        <div className="mt-4">
+          {action}
+        </div>
+      )}
     </div>
   );
 }
