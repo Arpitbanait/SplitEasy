@@ -18,8 +18,12 @@ import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authen
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBalancesRouteImport } from './routes/_authenticated/balances'
-import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
+import { Route as AuthenticatedGroupsGroupIdIndexRouteImport } from './routes/_authenticated/groups.$groupId/index'
+import { Route as AuthenticatedGroupsGroupIdSimplifiedRouteImport } from './routes/_authenticated/groups.$groupId/simplified'
+import { Route as AuthenticatedGroupsGroupIdMembersRouteImport } from './routes/_authenticated/groups.$groupId/members'
+import { Route as AuthenticatedGroupsGroupIdBalancesRouteImport } from './routes/_authenticated/groups.$groupId/balances'
+import { Route as AuthenticatedGroupsGroupIdLayoutRouteImport } from './routes/_authenticated/groups.$groupId/_layout'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -66,17 +70,41 @@ const AuthenticatedBalancesRoute = AuthenticatedBalancesRouteImport.update({
   path: '/balances',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedGroupsGroupIdRoute =
-  AuthenticatedGroupsGroupIdRouteImport.update({
-    id: '/$groupId',
-    path: '/$groupId',
-    getParentRoute: () => AuthenticatedGroupsRoute,
-  } as any)
 const AuthenticatedExpensesNewRoute =
   AuthenticatedExpensesNewRouteImport.update({
     id: '/expenses/new',
     path: '/expenses/new',
     getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedGroupsGroupIdIndexRoute =
+  AuthenticatedGroupsGroupIdIndexRouteImport.update({
+    id: '/$groupId/',
+    path: '/$groupId/',
+    getParentRoute: () => AuthenticatedGroupsRoute,
+  } as any)
+const AuthenticatedGroupsGroupIdSimplifiedRoute =
+  AuthenticatedGroupsGroupIdSimplifiedRouteImport.update({
+    id: '/$groupId/simplified',
+    path: '/$groupId/simplified',
+    getParentRoute: () => AuthenticatedGroupsRoute,
+  } as any)
+const AuthenticatedGroupsGroupIdMembersRoute =
+  AuthenticatedGroupsGroupIdMembersRouteImport.update({
+    id: '/$groupId/members',
+    path: '/$groupId/members',
+    getParentRoute: () => AuthenticatedGroupsRoute,
+  } as any)
+const AuthenticatedGroupsGroupIdBalancesRoute =
+  AuthenticatedGroupsGroupIdBalancesRouteImport.update({
+    id: '/$groupId/balances',
+    path: '/$groupId/balances',
+    getParentRoute: () => AuthenticatedGroupsRoute,
+  } as any)
+const AuthenticatedGroupsGroupIdLayoutRoute =
+  AuthenticatedGroupsGroupIdLayoutRouteImport.update({
+    id: '/$groupId/_layout',
+    path: '/$groupId',
+    getParentRoute: () => AuthenticatedGroupsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -89,7 +117,11 @@ export interface FileRoutesByFullPath {
   '/payments': typeof AuthenticatedPaymentsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
-  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdLayoutRoute
+  '/groups/$groupId/balances': typeof AuthenticatedGroupsGroupIdBalancesRoute
+  '/groups/$groupId/members': typeof AuthenticatedGroupsGroupIdMembersRoute
+  '/groups/$groupId/simplified': typeof AuthenticatedGroupsGroupIdSimplifiedRoute
+  '/groups/$groupId/': typeof AuthenticatedGroupsGroupIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,7 +133,10 @@ export interface FileRoutesByTo {
   '/payments': typeof AuthenticatedPaymentsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
-  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdIndexRoute
+  '/groups/$groupId/balances': typeof AuthenticatedGroupsGroupIdBalancesRoute
+  '/groups/$groupId/members': typeof AuthenticatedGroupsGroupIdMembersRoute
+  '/groups/$groupId/simplified': typeof AuthenticatedGroupsGroupIdSimplifiedRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,7 +150,11 @@ export interface FileRoutesById {
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
-  '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/_authenticated/groups/$groupId/_layout': typeof AuthenticatedGroupsGroupIdLayoutRoute
+  '/_authenticated/groups/$groupId/balances': typeof AuthenticatedGroupsGroupIdBalancesRoute
+  '/_authenticated/groups/$groupId/members': typeof AuthenticatedGroupsGroupIdMembersRoute
+  '/_authenticated/groups/$groupId/simplified': typeof AuthenticatedGroupsGroupIdSimplifiedRoute
+  '/_authenticated/groups/$groupId/': typeof AuthenticatedGroupsGroupIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,6 +169,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/expenses/new'
     | '/groups/$groupId'
+    | '/groups/$groupId/balances'
+    | '/groups/$groupId/members'
+    | '/groups/$groupId/simplified'
+    | '/groups/$groupId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,6 +185,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/expenses/new'
     | '/groups/$groupId'
+    | '/groups/$groupId/balances'
+    | '/groups/$groupId/members'
+    | '/groups/$groupId/simplified'
   id:
     | '__root__'
     | '/'
@@ -154,7 +200,11 @@ export interface FileRouteTypes {
     | '/_authenticated/payments'
     | '/_authenticated/settings'
     | '/_authenticated/expenses/new'
-    | '/_authenticated/groups/$groupId'
+    | '/_authenticated/groups/$groupId/_layout'
+    | '/_authenticated/groups/$groupId/balances'
+    | '/_authenticated/groups/$groupId/members'
+    | '/_authenticated/groups/$groupId/simplified'
+    | '/_authenticated/groups/$groupId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -228,13 +278,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBalancesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/groups/$groupId': {
-      id: '/_authenticated/groups/$groupId'
-      path: '/$groupId'
-      fullPath: '/groups/$groupId'
-      preLoaderRoute: typeof AuthenticatedGroupsGroupIdRouteImport
-      parentRoute: typeof AuthenticatedGroupsRoute
-    }
     '/_authenticated/expenses/new': {
       id: '/_authenticated/expenses/new'
       path: '/expenses/new'
@@ -242,15 +285,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExpensesNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/groups/$groupId/': {
+      id: '/_authenticated/groups/$groupId/'
+      path: '/$groupId'
+      fullPath: '/groups/$groupId/'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdIndexRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
+    '/_authenticated/groups/$groupId/simplified': {
+      id: '/_authenticated/groups/$groupId/simplified'
+      path: '/$groupId/simplified'
+      fullPath: '/groups/$groupId/simplified'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdSimplifiedRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
+    '/_authenticated/groups/$groupId/members': {
+      id: '/_authenticated/groups/$groupId/members'
+      path: '/$groupId/members'
+      fullPath: '/groups/$groupId/members'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdMembersRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
+    '/_authenticated/groups/$groupId/balances': {
+      id: '/_authenticated/groups/$groupId/balances'
+      path: '/$groupId/balances'
+      fullPath: '/groups/$groupId/balances'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdBalancesRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
+    '/_authenticated/groups/$groupId/_layout': {
+      id: '/_authenticated/groups/$groupId/_layout'
+      path: '/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdLayoutRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
   }
 }
 
 interface AuthenticatedGroupsRouteChildren {
-  AuthenticatedGroupsGroupIdRoute: typeof AuthenticatedGroupsGroupIdRoute
+  AuthenticatedGroupsGroupIdLayoutRoute: typeof AuthenticatedGroupsGroupIdLayoutRoute
+  AuthenticatedGroupsGroupIdBalancesRoute: typeof AuthenticatedGroupsGroupIdBalancesRoute
+  AuthenticatedGroupsGroupIdMembersRoute: typeof AuthenticatedGroupsGroupIdMembersRoute
+  AuthenticatedGroupsGroupIdSimplifiedRoute: typeof AuthenticatedGroupsGroupIdSimplifiedRoute
+  AuthenticatedGroupsGroupIdIndexRoute: typeof AuthenticatedGroupsGroupIdIndexRoute
 }
 
 const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
-  AuthenticatedGroupsGroupIdRoute: AuthenticatedGroupsGroupIdRoute,
+  AuthenticatedGroupsGroupIdLayoutRoute: AuthenticatedGroupsGroupIdLayoutRoute,
+  AuthenticatedGroupsGroupIdBalancesRoute:
+    AuthenticatedGroupsGroupIdBalancesRoute,
+  AuthenticatedGroupsGroupIdMembersRoute:
+    AuthenticatedGroupsGroupIdMembersRoute,
+  AuthenticatedGroupsGroupIdSimplifiedRoute:
+    AuthenticatedGroupsGroupIdSimplifiedRoute,
+  AuthenticatedGroupsGroupIdIndexRoute: AuthenticatedGroupsGroupIdIndexRoute,
 }
 
 const AuthenticatedGroupsRouteWithChildren =

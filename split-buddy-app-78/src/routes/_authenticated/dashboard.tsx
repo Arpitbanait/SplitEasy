@@ -1,39 +1,48 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, Plus, TrendingUp, Wallet } from "lucide-react";
 import { api, type Balance } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { AppShell, formatMoney } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-function extractBalances(d: unknown): Balance[] {
-  if (!d) return [];
-  if (Array.isArray(d)) return d as Balance[];
-  if (typeof d === "object") {
-    const obj = d as Record<string, unknown>;
-    for (const k of ["balances", "direct_balances", "data"]) {
-      if (Array.isArray(obj[k])) return obj[k] as Balance[];
-    }
-  }
-  return [];
-}
-
 function Dashboard() {
   const { user } = useAuth();
   const dash = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
-  const direct = useQuery({ queryKey: ["balances", "direct"], queryFn: api.directBalances });
   const groups = useQuery({ queryKey: ["groups"], queryFn: api.myGroups });
+  const direct = useQuery({ queryKey: ["balances", "direct"], queryFn: api.directBalances });
 
-  const balances = extractBalances(direct.data);
-  const youOwe = balances
+  // Fetch balances from each group
+  const groupList: { id: string; group_name: string }[] = Array.isArray(groups.data)
+    ? (groups.data as { id: string; group_name: string }[])
+    : ((groups.data as Record<string, unknown> | undefined)?.["groups"] as { id: string; group_name: string }[]) ?? [];
+
+  const groupBalanceQueries = useQueries({
+    queries: groupList.map((g) => ({
+      queryKey: ["group", g.id, "balances"],
+      queryFn: () => api.groupBalances(g.id),
+    })),
+  });
+
+  const directBalances: Balance[] = Array.isArray(direct.data) ? direct.data : [];
+  const groupBalances = groupBalanceQueries.flatMap((q) => (Array.isArray(q.data) ? (q.data as Balance[]) : []));
+
+  const allBalances: Balance[] = [...directBalances, ...groupBalances].filter(
+    (b) => b.from_user === user?.name || b.to_user === user?.name,
+  );
+
+  const balancesLoading = groups.isLoading || direct.isLoading || groupBalanceQueries.some((q) => q.isLoading);
+
+  const youOwe = allBalances
     .filter((b) => b.from_user === user?.name)
     .reduce((s, b) => s + b.amount, 0);
-  const owedToYou = balances
+  const owedToYou = allBalances
     .filter((b) => b.to_user === user?.name)
     .reduce((s, b) => s + b.amount, 0);
   const net = owedToYou - youOwe;
@@ -46,61 +55,114 @@ function Dashboard() {
           label="Net balance"
           value={formatMoney(net)}
           tone={net >= 0 ? "good" : "bad"}
-          loading={direct.isLoading}
+          loading={balancesLoading}
         />
         <StatCard
           icon={<ArrowUpRight className="h-4 w-4" />}
           label="You are owed"
           value={formatMoney(owedToYou)}
           tone="good"
-          loading={direct.isLoading}
+          loading={balancesLoading}
         />
         <StatCard
           icon={<ArrowDownRight className="h-4 w-4" />}
           label="You owe"
           value={formatMoney(youOwe)}
           tone="bad"
-          loading={direct.isLoading}
+          loading={balancesLoading}
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent balances</CardTitle>
+            <CardTitle>All balances</CardTitle>
             <Link to="/balances" className="text-sm text-primary hover:underline">View all</Link>
           </CardHeader>
           <CardContent>
-            {direct.isLoading ? (
+            {balancesLoading ? (
               <div className="space-y-2">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
-            ) : balances.length === 0 ? (
+            ) : allBalances.length === 0 ? (
               <EmptyState
                 icon={<Wallet className="h-6 w-6" />}
                 title="All settled up"
-                desc="No outstanding balances right now."
+                desc="No outstanding balances in your groups or direct expenses."
               />
             ) : (
-              <ul className="divide-y">
-                {balances.slice(0, 6).map((b, i) => {
-                  const youOwing = b.from_user === user?.name;
+              <Accordion type="single" collapsible className="space-y-2">
+                {groupList.map((group, index) => {
+                  const query = groupBalanceQueries[index];
+                  const balances = Array.isArray(query.data) ? (query.data as Balance[]) : [];
+                  const groupTotal = balances.reduce((sum, b) => sum + b.amount, 0);
+
                   return (
-                    <li key={i} className="py-3 flex items-center justify-between">
-                      <div className="text-sm">
-                        {youOwing ? (
-                          <>You owe <span className="font-semibold">{b.to_user}</span></>
+                    <AccordionItem key={group.id} value={group.id} className="overflow-hidden rounded-lg border">
+                      <AccordionTrigger className="flex items-center justify-between gap-4 px-4 py-3 text-sm font-medium">
+                        <span>{group.group_name}</span>
+                        <span className="text-muted-foreground">{formatMoney(groupTotal)}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4 pt-0">
+                        {query.isLoading ? (
+                          <Skeleton className="h-20 w-full" />
+                        ) : balances.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No balances for this group yet.</p>
                         ) : (
-                          <><span className="font-semibold">{b.from_user}</span> owes you</>
+                          <ul className="space-y-3">
+                            {balances.map((b, itemIndex) => {
+                              const youOwing = b.from_user === user?.name;
+                              return (
+                                <li key={itemIndex} className="flex items-center justify-between rounded-md bg-muted/10 p-3">
+                                  <div className="text-sm">
+                                    {youOwing ? (
+                                      <>You owe <span className="font-semibold">{b.to_user}</span></>
+                                    ) : (
+                                      <><span className="font-semibold">{b.from_user}</span> owes you</>
+                                    )}
+                                  </div>
+                                  <span className={youOwing ? "text-danger font-semibold" : "text-success font-semibold"}>
+                                    {formatMoney(b.amount)}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
                         )}
-                      </div>
-                      <span className={youOwing ? "text-danger font-semibold" : "text-success font-semibold"}>
-                        {formatMoney(b.amount)}
-                      </span>
-                    </li>
+                      </AccordionContent>
+                    </AccordionItem>
                   );
                 })}
-              </ul>
+                {directBalances.length > 0 && (
+                  <AccordionItem value="direct-balances" className="overflow-hidden rounded-lg border">
+                    <AccordionTrigger className="flex items-center justify-between gap-4 px-4 py-3 text-sm font-medium">
+                      <span>Other balances</span>
+                      <span className="text-muted-foreground">{formatMoney(directBalances.reduce((sum, b) => sum + b.amount, 0))}</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4 pt-0">
+                      <ul className="space-y-3">
+                        {directBalances.map((b, itemIndex) => {
+                          const youOwing = b.from_user === user?.name;
+                          return (
+                            <li key={itemIndex} className="flex items-center justify-between rounded-md bg-muted/10 p-3">
+                              <div className="text-sm">
+                                {youOwing ? (
+                                  <>You owe <span className="font-semibold">{b.to_user}</span></>
+                                ) : (
+                                  <><span className="font-semibold">{b.from_user}</span> owes you</>
+                                )}
+                              </div>
+                              <span className={youOwing ? "text-danger font-semibold" : "text-success font-semibold"}>
+                                {formatMoney(b.amount)}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
+              </Accordion>
             )}
           </CardContent>
         </Card>
@@ -113,52 +175,62 @@ function Dashboard() {
           <CardContent>
             {groups.isLoading ? (
               <Skeleton className="h-24 w-full" />
-            ) : (() => {
-              const list = Array.isArray(groups.data)
-                ? groups.data
-                : (groups.data as Record<string, unknown> | undefined)?.["groups"] as unknown[] ?? [];
-              if (!list || list.length === 0) {
-                return (
-                  <EmptyState
-                    icon={<Plus className="h-6 w-6" />}
-                    title="No groups yet"
-                    desc="Create your first group to start splitting."
-                    action={<Link to="/groups" className="text-sm font-semibold text-primary hover:underline">Create group →</Link>}
-                  />
-                );
-              }
-              return (
-                <ul className="space-y-2">
-                  {(list as { id: string; group_name: string }[]).slice(0, 5).map((g) => (
-                    <li key={g.id}>
-                      <Link
-                        to="/groups/$groupId"
-                        params={{ groupId: g.id }}
-                        className="flex items-center gap-3 rounded-md p-2 hover:bg-accent"
-                      >
-                        <div className="h-9 w-9 rounded-md bg-primary/15 text-primary grid place-items-center font-semibold">
-                          {g.group_name?.[0]?.toUpperCase() ?? "G"}
-                        </div>
-                        <span className="text-sm font-medium truncate">{g.group_name}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              );
-            })()}
+            ) : groupList.length === 0 ? (
+              <EmptyState
+                icon={<Plus className="h-6 w-6" />}
+                title="No groups yet"
+                desc="Create your first group to start splitting."
+                action={<Link to="/groups" className="text-sm font-semibold text-primary hover:underline">Create group →</Link>}
+              />
+            ) : (
+              <ul className="space-y-2">
+                {groupList.slice(0, 5).map((g) => (
+                  <li key={g.id}>
+                    <Link
+                      to="/groups/$groupId"
+                      params={{ groupId: g.id }}
+                      className="flex items-center gap-3 rounded-md p-2 hover:bg-accent"
+                    >
+                      <div className="h-9 w-9 rounded-md bg-primary/15 text-primary grid place-items-center font-semibold">
+                        {g.group_name?.[0]?.toUpperCase() ?? "G"}
+                      </div>
+                      <span className="text-sm font-medium truncate">{g.group_name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {dash.data && (
-        <Card className="mt-6">
-          <CardHeader><CardTitle>Activity</CardTitle></CardHeader>
-          <CardContent>
-            <pre className="text-xs text-muted-foreground overflow-x-auto">
-              {JSON.stringify(dash.data, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-xs text-muted-foreground">Total groups</div>
+              <p className="text-2xl font-bold mt-2">{(dash.data as Record<string, unknown>)?.total_groups ?? 0}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-xs text-muted-foreground">Total expenses</div>
+              <p className="text-2xl font-bold mt-2">{(dash.data as Record<string, unknown>)?.total_expenses ?? 0}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-xs text-muted-foreground">Pending notifications</div>
+              <p className="text-2xl font-bold mt-2 text-primary">{(dash.data as Record<string, unknown>)?.pending_notifications ?? 0}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-xs text-muted-foreground">Recent payments</div>
+              <p className="text-2xl font-bold mt-2">{(dash.data as Record<string, unknown>)?.recent_payments ?? 0}</p>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </AppShell>
   );

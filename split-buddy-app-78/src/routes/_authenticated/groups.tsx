@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api, type GroupSummary } from "@/lib/api";
@@ -39,6 +39,13 @@ function GroupsPage() {
   const list: GroupSummary[] = Array.isArray(q.data)
     ? (q.data as GroupSummary[])
     : ((q.data as Record<string, unknown> | undefined)?.["groups"] as GroupSummary[]) ?? [];
+
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isGroupDetail = pathname.startsWith("/groups/") && pathname !== "/groups";
+
+  if (isGroupDetail) {
+    return <Outlet />;
+  }
 
   return (
     <AppShell
@@ -88,24 +95,73 @@ function GroupsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((g) => (
-            <Link key={g.id} to="/groups/$groupId" params={{ groupId: g.id }}>
-              <Card className="hover:border-primary/50 transition-colors h-full">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <div className="h-12 w-12 rounded-lg bg-primary/15 text-primary grid place-items-center font-bold text-lg shrink-0">
-                      {g.group_name?.[0]?.toUpperCase() ?? "G"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate">{g.group_name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Tap to view balances</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <GroupCard key={g.id} groupId={g.id} groupName={g.group_name} />
           ))}
         </div>
       )}
     </AppShell>
+  );
+}
+
+function GroupCard({ groupId, groupName }: { groupId: string; groupName: string }) {
+  const summary = useQuery({
+    queryKey: ["group", groupId, "summary"],
+    queryFn: () => api.groupSummary(groupId),
+  });
+
+  const summaryData = (summary.data ?? {}) as Record<string, unknown>;
+  const totalExpenses = (summaryData.total_expenses as number) ?? 0;
+  const memberCount = (summaryData.total_members as number) ?? 0;
+
+  const navigate = useNavigate();
+
+  return (
+    <Card
+      onClick={() => navigate({ to: "/groups/$groupId", params: { groupId } })}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate({ to: "/groups/$groupId", params: { groupId } });
+        }
+      }}
+      className="hover:border-primary/50 hover:shadow-md transition-all h-full cursor-pointer"
+    >
+      <CardContent className="pt-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="h-12 w-12 rounded-lg bg-primary/15 text-primary grid place-items-center font-bold text-lg shrink-0">
+            {groupName?.[0]?.toUpperCase() ?? "G"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold truncate">{groupName}</p>
+            <p className="text-xs text-muted-foreground mt-1">Tap to view details</p>
+          </div>
+        </div>
+        
+        <div className="space-y-2 text-sm border-t pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" /> Members
+            </span>
+            <span className="font-medium">
+              {summary.isLoading ? <Skeleton className="h-4 w-6 inline-block" /> : memberCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Receipt className="h-3.5 w-3.5" /> Expenses
+            </span>
+            <span className="font-medium">
+              {summary.isLoading ? (
+                <Skeleton className="h-4 w-8 inline-block" />
+              ) : (
+                totalExpenses
+              )}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

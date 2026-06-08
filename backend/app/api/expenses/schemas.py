@@ -27,7 +27,7 @@ class ExpenseHistoryResponse(BaseModel):
 
 
 class SettleExpense(BaseModel):
-    group_id: UUID
+    group_id: Optional[UUID] = None
     receiver_id: UUID
     amount: float    
 
