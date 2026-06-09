@@ -4,7 +4,7 @@ import { Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api, type GroupDetails, type GroupSummary, type PaymentItem } from "@/lib/api";
-import { AppShell, formatMoney } from "@/components/app-shell";
+import { AppShell, formatMoney } from "@/components/app-shell";g
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
