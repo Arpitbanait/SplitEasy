@@ -603,7 +603,13 @@ def get_direct_balances(
             balance.creditor.full_name,
 
             "amount":
-            balance.amount
+            balance.amount,
+
+            "owed_by":
+            str(balance.owed_by),
+
+            "owed_to":
+            str(balance.owed_to)
         })
 
     return response    

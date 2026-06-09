@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { api, type GroupDetails, type GroupSummary, type Member } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,24 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+export type EditableExpense = {
+  id: string;
+  amount: number;
+  description: string;
+  participants?: string[];
+};
+
 export function AddExpenseForm({
   fixedGroupId,
   members: providedMembers,
+  expense,
+  submitLabel,
   onDone,
 }: {
   fixedGroupId?: string;
   members?: Member[];
+  expense?: EditableExpense | null;
+  submitLabel?: string;
   onDone: () => void;
 }) {
   const [groupId, setGroupId] = useState<string | undefined>(fixedGroupId);
@@ -44,12 +55,37 @@ export function AddExpenseForm({
     ? (groupsQ.data as GroupSummary[])
     : ((groupsQ.data as Record<string, unknown> | undefined)?.["groups"] as GroupSummary[]) ?? [];
 
+  useEffect(() => {
+    if (!members.length) return;
+    if (expense) {
+      const initial = members.reduce((acc, m) => ({
+        ...acc,
+        [m.id]: expense.participants ? expense.participants.includes(m.id) : true,
+      }), {} as Record<string, boolean>);
+      setSelected(initial);
+      setAmount(expense.amount.toString());
+      setDescription(expense.description);
+      return;
+    }
+
+    if (Object.keys(selected).length === 0) {
+      setSelected(members.reduce((acc, m) => ({ ...acc, [m.id]: true }), {} as Record<string, boolean>));
+    }
+  }, [expense, members, selected]);
+
   const create = useMutation({
     mutationFn: () => {
       const participants = Object.keys(selected).filter((k) => selected[k]);
       if (participants.length === 0) throw new Error("Pick at least one participant");
       const amt = parseFloat(amount);
       if (!amt || amt <= 0) throw new Error("Enter a valid amount");
+      if (expense) {
+        return api.updateExpense(expense.id, {
+          amount: amt,
+          description,
+          participants,
+        });
+      }
       return api.createExpense({
         group_id: groupId ?? null,
         amount: amt,
@@ -57,7 +93,10 @@ export function AddExpenseForm({
         participants,
       });
     },
-    onSuccess: () => { toast.success("Expense added"); onDone(); },
+    onSuccess: () => {
+      toast.success(expense ? "Expense updated" : "Expense added");
+      onDone();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -113,7 +152,7 @@ export function AddExpenseForm({
       </div>
 
       <Button type="submit" className="w-full" disabled={create.isPending}>
-        {create.isPending ? "Saving…" : "Add expense"}
+        {create.isPending ? "Saving…" : submitLabel ?? (expense ? "Save changes" : "Add expense")}
       </Button>
     </form>
   );

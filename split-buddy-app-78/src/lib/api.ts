@@ -94,7 +94,13 @@ export type GroupDetails = {
   created_at: string;
   members: Member[];
 };
-export type Balance = { from_user: string; to_user: string; amount: number };
+export type Balance = {
+  from_user: string;
+  to_user: string;
+  amount: number;
+  owed_by?: string;
+  owed_to?: string;
+};
 export type ExpenseItem = {
   id: string;
   description: string;
@@ -109,6 +115,17 @@ export type PaymentItem = {
   amount: number;
   payment_status: string;
   created_at: string;
+};
+export type Notification = {
+  id: string;
+  message?: string;
+  text?: string;
+  is_read?: boolean;
+  created_at?: string;
+};
+export type GroupSummaryData = {
+  total_members: number;
+  total_expenses: number;
 };
 
 // --- Endpoints ---
@@ -144,7 +161,7 @@ export const api = {
   }) => apiFetch("/expenses/create", { method: "POST", body: b }),
   groupBalances: (id: string) => apiFetch<Balance[]>(`/expenses/group/${id}/balances`),
   groupExpenses: (id: string) => apiFetch<ExpenseItem[]>(`/expenses/group/${id}/expenses`),
-  settle: (b: { group_id: string; receiver_id: string; amount: number }) =>
+  settle: (b: { group_id?: string | null; receiver_id: string; amount: number }) =>
     apiFetch("/expenses/settle", { method: "POST", body: b }),
   deleteExpense: (id: string) =>
     apiFetch(`/expenses/${id}`, { method: "DELETE" }),
@@ -163,7 +180,9 @@ export const api = {
   dashboard: () => apiFetch<Record<string, unknown>>("/dashboard/"),
 
   // Notifications
-  notifications: () => apiFetch<unknown[]>("/notifications/"),
+  notifications: () => apiFetch<Notification[]>("/notifications/"),
+  markNotificationAsRead: (id: string) =>
+    apiFetch(`/notifications/${id}/read`, { method: "PUT" }),
 };
 
 export { API_URL };

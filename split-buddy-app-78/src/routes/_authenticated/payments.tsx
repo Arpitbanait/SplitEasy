@@ -102,33 +102,72 @@ function PaymentsPage() {
         </Dialog>
       }
     >
-      <Card>
-        <CardHeader><CardTitle>Payment history</CardTitle></CardHeader>
-        <CardContent>
-          {q.isLoading ? <Skeleton className="h-32" /> : !q.data || (q.data as PaymentItem[]).length === 0 ? (
-            <EmptyState icon={<Receipt className="h-6 w-6" />} title="No payments yet" desc="Settle up to see history." />
-          ) : (
-            <ul className="divide-y">
-              {(q.data as PaymentItem[]).map((p) => (
-                <li key={p.id} className="py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {p.payer_name} → {p.receiver_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(p.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary">{p.payment_status}</Badge>
-                    <span className="font-semibold">{formatMoney(p.amount)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Payment history</CardTitle>
+              <Badge variant="outline">{(q.data as PaymentItem[])?.length ?? 0} total</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {q.isLoading ? <Skeleton className="h-32" /> : !q.data || (q.data as PaymentItem[]).length === 0 ? (
+              <EmptyState icon={<Receipt className="h-6 w-6" />} title="No payments yet" desc="Settle up to see history." />
+            ) : (
+              <ul className="divide-y">
+                {(q.data as PaymentItem[]).map((p) => (
+                  <li key={p.id} className="py-4 flex items-start justify-between gap-3 hover:bg-muted/30 px-2 rounded">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        <span className="text-foreground">{p.payer_name}</span>
+                        <span className="text-muted-foreground mx-1">→</span>
+                        <span className="text-foreground">{p.receiver_name}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(p.created_at).toLocaleDateString()} • {new Date(p.created_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={p.payment_status === "pending" ? "secondary" : "default"}>
+                        {p.payment_status}
+                      </Badge>
+                      <span className="font-semibold text-sm">{formatMoney(p.amount)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Recent stats</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Total payments</p>
+              <p className="text-2xl font-bold">{(q.data as PaymentItem[])?.length ?? 0}</p>
+            </div>
+            {(q.data as PaymentItem[])?.length > 0 && (
+              <>
+                <div>
+                  <p className="text-xs text-muted-foreground">Latest payment</p>
+                  <p className="text-sm font-medium">
+                    {new Date((q.data as PaymentItem[])[0]?.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total settled</p>
+                  <p className="text-lg font-bold">
+                    {formatMoney(
+                      (q.data as PaymentItem[]).reduce((s, p) => s + p.amount, 0)
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </AppShell>
   );
 }
