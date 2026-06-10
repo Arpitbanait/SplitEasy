@@ -1,4 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+  useMatchRoute,
+} from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -9,6 +15,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+
+
 
 import { api, type GroupSummary } from "@/lib/api";
 import { AppShell } from "@/components/app-shell";
@@ -43,68 +51,38 @@ export const Route =
   });
 
 function GroupsPage() {
-  const qc =
-    useQueryClient();
+  const matchRoute = useMatchRoute();
+  const isChildActive = matchRoute({ to: "/groups/$groupId", fuzzy: true });
+
+  const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const q = useQuery({
-    queryKey: [
-      "groups",
-    ],
-    queryFn:
-      api.myGroups,
+    queryKey: ["groups"],
+    queryFn: api.myGroups,
   });
 
-  const [open, setOpen] =
-    useState(false);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
 
-  const [name, setName] =
-    useState("");
+  const create = useMutation({
+    mutationFn: (group_name: string) => api.createGroup(group_name),
+    onSuccess: () => {
+      toast.success("Group created 🎉");
+      qc.invalidateQueries({ queryKey: ["groups"] });
+      setOpen(false);
+      setName("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const create =
-    useMutation({
-      mutationFn: (
-        group_name: string
-      ) =>
-        api.createGroup(
-          group_name
-        ),
+  const list: GroupSummary[] = Array.isArray(q.data)
+    ? q.data
+    : ((q.data as Record<string, unknown> | undefined)?.["groups"] as GroupSummary[]) ?? [];
 
-      onSuccess: () => {
-        toast.success(
-          "Group created 🎉"
-        );
-
-        qc.invalidateQueries({
-          queryKey: [
-            "groups",
-          ],
-        });
-
-        setOpen(false);
-        setName("");
-      },
-
-      onError: (
-        e: Error
-      ) =>
-        toast.error(
-          e.message
-        ),
-    });
-
-  const list: GroupSummary[] =
-    Array.isArray(
-      q.data
-    )
-      ? q.data
-      : (
-          (q.data as Record<
-            string,
-            unknown
-          > | undefined)?.[
-            "groups"
-          ] as GroupSummary[]
-        ) ?? [];
+  if (isChildActive) {
+    return <Outlet />;
+  }
 
   return (
     <AppShell
@@ -286,16 +264,15 @@ function GroupsPage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {list.map(
             (g) => (
-              <Link
-                key={g.id}
-                to="/groups/$groupId"
-                params={{
-                  groupId:
-                    g.id,
-                }}
-              >
-                <Card className="group rounded-[2rem] overflow-hidden border hover:border-primary/40 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">
-                  <CardContent className="p-6 flex flex-col justify-between h-full">
+  <Link
+  key={g.id}
+  to="/groups/$groupId"
+  params={{
+    groupId: g.id,
+  }}
+  className="block"
+>
+  <Card className="group rounded-[2rem] overflow-hidden border hover:border-primary/40 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full">     <CardContent className="p-6 flex flex-col justify-between h-full">
                     <div>
                       <div className="flex items-start justify-between">
                         <div className="h-16 w-16 rounded-[1.5rem] bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-2xl font-bold shadow-sm">

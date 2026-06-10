@@ -1,4 +1,3 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import {
   useQuery,
@@ -49,7 +48,7 @@ function BalancesPage() {
   /* ---------------- USER ---------------- */
 
   const currentUser =
-    user?.name
+    user?.full_name
       ?.trim()
       .toLowerCase() ?? "";
 
