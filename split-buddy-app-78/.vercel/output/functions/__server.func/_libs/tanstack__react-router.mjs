@@ -742,6 +742,18 @@ function MatchesInner() {
     })
   });
 }
+function useMatchRoute() {
+  const router = useRouter();
+  return reactExports.useCallback((opts) => {
+    const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts;
+    return router.matchRoute(rest, {
+      pending,
+      caseSensitive,
+      fuzzy,
+      includeSearch
+    });
+  }, [router]);
+}
 var getStoreFactory = (opts) => {
   return {
     createMutableStore: createNonReactiveMutableStore,
@@ -1181,7 +1193,8 @@ export {
   createFileRoute as b,
   createRouter as c,
   useNavigate as d,
-  useRouterState as e,
+  useMatchRoute as e,
+  useRouterState as f,
   lazyRouteComponent as l,
   renderRouterToStream as r,
   useRouter as u
